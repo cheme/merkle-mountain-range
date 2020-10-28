@@ -66,7 +66,7 @@ fn test_mmr_root() {
     let root = mmr.get_root().expect("get root");
     let hex_root = hex_string(&root.0).unwrap();
     assert_eq!(
-        "f6794677f37a57df6a5ec36ce61036e43a36c1a009d05c81c9aa685dde1fd6e3",
+        "dddd55a20b94975d197095dd00bc8077e8225b4e31f694dce3a7370d6c94fec5",
         hex_root
     );
 }
