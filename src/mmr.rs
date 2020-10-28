@@ -412,8 +412,26 @@ fn calculate_root<
     mmr_size: u64,
     proof_iter: I,
 ) -> Result<T> {
+	if leaves.len() == 1 {
+		let mut leaves = leaves;
+		let (pos, mut result) = leaves.pop().expect("size checked");
+		// TODO check nb proof correct in respect with size
+		let key = crate::pos_to_leaf_index(pos); // This is just for test!!, the actual index should be in input
+		// TODO implement offset
+		//let offset = first_peak_height - current_peak_height;
+		let offset = 0;
+		for (height, sibling) in proof_iter.enumerate() {
+			if key & 1 << (height + offset) == 0 {
+				result = M::merge(&result, &sibling);
+			} else {
+				result = M::merge(&sibling, &result);
+			}
+		}
+		Ok(result)
+	} else {
     let peaks_hashes = calculate_peaks_hashes::<_, M, _>(leaves, mmr_size, proof_iter)?;
     bagging_peaks_hashes::<_, M>(peaks_hashes)
+	}
 }
 
 fn take_while_vec<T, P: Fn(&T) -> bool>(v: &mut Vec<T>, p: P) -> Vec<T> {

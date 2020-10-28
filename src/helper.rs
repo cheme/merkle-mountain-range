@@ -5,6 +5,16 @@ pub fn leaf_index_to_pos(index: u64) -> u64 {
     leaf_index_to_mmr_size(index) - (index + 1).trailing_zeros() as u64 - 1
 }
 
+// just for testing
+pub fn pos_to_leaf_index(pos: u64) -> u64 {
+	for i in 0.. {
+		if pos == leaf_index_to_pos(i) {
+			return i
+		}
+	}
+	0
+}
+
 pub fn leaf_index_to_mmr_size(index: u64) -> u64 {
     // leaf index start with 0
     let leaves_count = index + 1;
@@ -76,7 +86,7 @@ fn get_peak_pos_by_height(height: u32) -> u64 {
     (1 << (height + 1)) - 2
 }
 
-fn left_peak_height_pos(mmr_size: u64) -> (u32, u64) {
+pub(crate) fn left_peak_height_pos(mmr_size: u64) -> (u32, u64) {
     let mut height = 1;
     let mut prev_pos = 0;
     let mut pos = get_peak_pos_by_height(height);

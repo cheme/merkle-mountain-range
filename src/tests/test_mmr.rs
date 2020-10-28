@@ -5,11 +5,41 @@ use proptest::prelude::*;
 use rand::{seq::SliceRandom, thread_rng};
 
 fn test_mmr(count: u32, proof_elem: Vec<u32>) {
+	test_mmr_inner(count, proof_elem, None, None)
+}
+
+fn test_mmr_pruning(count: u32, proof_elem: Vec<u32>, pruning_elem: u32) {
+	test_mmr_inner(count, proof_elem, None, Some(pruning_elem))
+}
+
+fn test_mmr_and_proof_len(count: u32, proof_elem: Vec<u32>, proof_size: Option<usize>) {
+	test_mmr_inner(count, proof_elem, proof_size, None)
+}
+
+fn test_mmr_inner(
+	count: u32,
+	proof_elem: Vec<u32>,
+	proof_size: Option<usize>,
+	pruning_elem: Option<u32>,
+) {
     let store = MemStore::default();
     let mut mmr = MMR::<_, MergeNumberHash, _>::new(0, &store);
     let positions: Vec<u64> = (0u32..count)
         .map(|i| mmr.push(NumberHash::from(i)).unwrap())
         .collect();
+		let mmr = if let Some(pruning) = pruning_elem {
+			let len = mmr.mmr_size();
+			mmr.commit().expect("commit changes");
+			let position = leaf_index_to_mmr_size((pruning - 1) as u64);
+			// pruning -> bad values, this is worst possible
+			// more position - nb 1 at the end
+			for i in 0..(position / 2) {
+				store.inner().borrow_mut().remove(&i);
+			}
+			MMR::<_, MergeNumberHash, _>::new(len, &store)
+		} else {
+			mmr
+		};
     let root = mmr.get_root().expect("get root");
     let proof = mmr
         .gen_proof(
@@ -19,6 +49,9 @@ fn test_mmr(count: u32, proof_elem: Vec<u32>) {
                 .collect(),
         )
         .expect("gen proof");
+		if let Some(expected_size) = proof_size {
+			assert_eq!(proof.proof_items().len(), expected_size);
+		}
     mmr.commit().expect("commit changes");
     let result = proof
         .verify(
@@ -138,6 +171,71 @@ fn test_mmr_3_leaves_merkle_proof() {
 #[test]
 fn test_gen_root_from_proof() {
     test_gen_new_root_from_proof(11);
+}
+
+#[test]
+fn test_mmr_proof_size() {
+	// len 8 is single peak so a binary tree of depth 3
+  test_mmr_and_proof_len(8, vec![0], Some(3));
+  test_mmr_and_proof_len(8, vec![7], Some(3));
+  test_mmr_and_proof_len(8, vec![0, 1], Some(2));
+  test_mmr_and_proof_len(8, vec![0, 2], Some(3));
+  test_mmr_and_proof_len(8, vec![0, 5, 6], Some(4));
+  test_mmr_and_proof_len(8, vec![0, 7], Some(4));
+	// 2 for peak root and one for baging
+  test_mmr_and_proof_len(5, vec![0], Some(3));
+  test_mmr_and_proof_len(6, vec![0], Some(3));
+	// 2 for peak root and one for baging (bagging against merge of 2nd and 3rd peaks)
+  test_mmr_and_proof_len(7, vec![0], Some(3));
+	// 2 for peak one, one for peak two, and peak 3
+  test_mmr_and_proof_len(7, vec![0, 4], Some(4));
+	// 2 for peak one, one for peak two root
+  test_mmr_and_proof_len(7, vec![0, 6], Some(3));
+  test_mmr_and_proof_len(7, vec![0, 1], Some(2));
+  test_mmr_and_proof_len(7, vec![3], Some(3));
+	// 2nd peak one, 3rd peak and 1rst peak
+  test_mmr_and_proof_len(7, vec![4], Some(3));
+	// 3 peak and bag of peaks
+  test_mmr_and_proof_len(15, vec![0], Some(4));
+	// 2 2nd peak and bag 3rd 4th and first
+  test_mmr_and_proof_len(15, vec![8], Some(4));
+	// 1 3rd peak and 4th peak and 2nd peak and first peak
+  test_mmr_and_proof_len(15, vec![12], Some(4));
+	// 3 other peak
+  test_mmr_and_proof_len(15, vec![14], Some(3));
+	// comp first and second peak: 3 for 1st, 2 for 2nd, 1 bag
+  test_mmr_and_proof_len(15, vec![0, 8], Some(6));
+	// comp first and third peak: 3 for 1st, 1 for 3rd, 4th peak, 2nd peak
+  test_mmr_and_proof_len(15, vec![0, 12], Some(6));
+	// comp first and fourth peak: 3 for 1st, 2nd and 3rd peak
+  test_mmr_and_proof_len(15, vec![0, 14], Some(5));
+	// comp second and third peak: 2 for 2nd, 1 for thrid first and 4th peak
+  test_mmr_and_proof_len(15, vec![8, 12], Some(5));
+	// comp second and fouth peak: 2 for 2nd, first and 3rd peak
+  test_mmr_and_proof_len(15, vec![8, 14], Some(4));
+	// comp third and fourth peak: 1 for third and 1st and 2nd
+  test_mmr_and_proof_len(15, vec![12, 14], Some(3));
+}
+
+#[test]
+fn to_check() {
+/*	test_mmr(2, vec![0]);
+	test_mmr(2, vec![1]);
+	test_mmr(3, vec![1]);
+	test_mmr(7, vec![0]);
+	test_mmr(7, vec![3]);*/
+	test_mmr(3, vec![2]);
+}
+
+
+#[test]
+fn test_pruning() {
+	let size = [1, 7, 8, 15, 16];
+	for s in size.iter() {
+		for i in 1..*s {
+		 test_mmr_pruning(*s, vec![i], i);
+		}
+	}
 }
 
 prop_compose! {

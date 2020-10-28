@@ -19,6 +19,13 @@ impl<T> MemStore<T> {
     }
 }
 
+impl<T> MemStore<T> {
+		#[cfg(test)]
+    pub fn inner(&self) -> &RefCell<BTreeMap<u64, T>> {
+       &self.0
+    }
+}
+
 impl<T: Clone> MMRStore<T> for &MemStore<T> {
     fn get_elem(&self, pos: u64) -> Result<Option<T>> {
         Ok(self.0.borrow().get(&pos).cloned())

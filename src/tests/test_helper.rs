@@ -2,7 +2,7 @@ use super::{MergeNumberHash, NumberHash};
 use crate::{
     helper::{get_peaks, pos_height_in_tree},
     leaf_index_to_mmr_size, leaf_index_to_pos,
-    util::MemStore,
+    util::MemStore, pos_to_leaf_index,
     MMR,
 };
 use lazy_static::lazy_static;
@@ -31,6 +31,13 @@ lazy_static! {
 }
 
 #[test]
+fn test_leaf_index_to_pos_2() {
+	for i in 0..100 {
+		let pos = leaf_index_to_pos(i);
+    assert_eq!(pos_to_leaf_index(pos), i);
+	}
+}
+#[test]
 fn test_leaf_index_to_pos() {
     assert_eq!(leaf_index_to_pos(0), 0);
     assert_eq!(leaf_index_to_pos(1), 1);
@@ -42,6 +49,10 @@ fn test_leaf_index_to_mmr_size() {
     assert_eq!(leaf_index_to_mmr_size(0), 1);
     assert_eq!(leaf_index_to_mmr_size(1), 3);
     assert_eq!(leaf_index_to_mmr_size(2), 4);
+    assert_eq!(leaf_index_to_mmr_size(6), 11);
+    assert_eq!(leaf_index_to_mmr_size(7), 15);
+		// max size is ~u63
+    assert_eq!(leaf_index_to_mmr_size((u64::max_value() >> 1) - 1), u64::max_value() - 64);
 }
 
 #[test]
