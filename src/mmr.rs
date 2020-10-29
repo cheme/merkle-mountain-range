@@ -412,6 +412,7 @@ fn calculate_root<
     mmr_size: u64,
     proof_iter: I,
 ) -> Result<T> {
+	/* working with mmr_size and not leaf size is akward here, commentinga
 	if leaves.len() == 1 {
 		let mut leaves = leaves;
 		let (pos, mut result) = leaves.pop().expect("size checked");
@@ -419,6 +420,10 @@ fn calculate_root<
 		let key = crate::pos_to_leaf_index(pos); // This is just for test!!, the actual index should be in input
 		// TODO implement offset
 		//let offset = first_peak_height - current_peak_height;
+		//that is nb_elt as bin: first 1 is height
+		//then for other is this max height - nb common bit in front.
+		let max_height = crate::helper::left_peak_height_pos(mmr_size).0; // using mmr size
+		let nb_peaks = for i in 
 		let offset = 0;
 		for (height, sibling) in proof_iter.enumerate() {
 			if key & 1 << (height + offset) == 0 {
@@ -429,9 +434,10 @@ fn calculate_root<
 		}
 		Ok(result)
 	} else {
-    let peaks_hashes = calculate_peaks_hashes::<_, M, _>(leaves, mmr_size, proof_iter)?;
-    bagging_peaks_hashes::<_, M>(peaks_hashes)
-	}
+	*/
+  let peaks_hashes = calculate_peaks_hashes::<_, M, _>(leaves, mmr_size, proof_iter)?;
+  bagging_peaks_hashes::<_, M>(peaks_hashes)
+	//}
 }
 
 fn take_while_vec<T, P: Fn(&T) -> bool>(v: &mut Vec<T>, p: P) -> Vec<T> {
